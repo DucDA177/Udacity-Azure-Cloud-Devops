@@ -20,3 +20,9 @@ variable "password" {
   default     = "MyStr00ngP@$$w0rD"
   type        = string
 }
+
+variable "vm_count" {
+  description = "The number of VM created"
+  default     = 2
+  type        = number
+}

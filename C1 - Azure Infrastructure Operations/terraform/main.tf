@@ -42,7 +42,7 @@ resource "azurerm_network_security_group" "my_nsg" {
 # Create security rules
 resource "azurerm_network_security_rule" "DenyAllInbound" {
     name                         = "DenyAllInbound"
-    description                  = "This rule with low priority deny all the inbound traffic."
+    description                  = "This rule with low priority deny all the inbound traffic"
     priority                     = 100
     direction                    = "Inbound"
     access                       = "Deny"
@@ -55,9 +55,55 @@ resource "azurerm_network_security_rule" "DenyAllInbound" {
     network_security_group_name  = azurerm_network_security_group.my_nsg.name
 }
 
+resource "azurerm_network_security_rule" "AllowInboundSameVirtualNetwork" {
+    name                         = "AllowInboundSameVirtualNetwork"
+    description                  = "Allow inbound traffick inside the same Virtual Network"
+    priority                     = 101
+    direction                    = "Inbound"
+    access                       = "Allow"
+    protocol                     = "*"
+    source_port_ranges           = azurerm_virtual_network.my_terraform_network.address_space
+    destination_port_ranges      = azurerm_virtual_network.my_terraform_network.address_space
+    source_address_prefix        = "VirtualNetwork"
+    destination_address_prefix   = "VirtualNetwork"
+    resource_group_name          = azurerm_resource_group.rg.name
+    network_security_group_name  = azurerm_network_security_group.my_nsg.name
+}
+
+resource "azurerm_network_security_rule" "AllowOutboundSameVirtualNetwork" {
+    name                         = "AllowOutboundSameVirtualNetwork"
+    description                  = "Allow outbound traffick inside the same Virtual Network"
+    priority                     = 102
+    direction                    = "Outbound"
+    access                       = "Allow"
+    protocol                     = "*"
+    source_port_ranges           = azurerm_virtual_network.my_terraform_network.address_space
+    destination_port_ranges      = azurerm_virtual_network.my_terraform_network.address_space
+    source_address_prefix        = "VirtualNetwork"
+    destination_address_prefix   = "VirtualNetwork"
+    resource_group_name          = azurerm_resource_group.rg.name
+    network_security_group_name  = azurerm_network_security_group.my_nsg.name
+}
+
+resource "azurerm_network_security_rule" "AllowHTTPTrafficFromLoadBalancer" {
+    name                         = "AllowHTTPTrafficFromLoadBalancer"
+    description                  = "Allow HTTP traffic to the VMs from the load balancer."
+    priority                     = 103
+    direction                    = "Inbound"
+    access                       = "Allow"
+    protocol                     = "Tcp"
+    source_port_ranges           = azurerm_virtual_network.my_terraform_network.address_space
+    destination_port_ranges      = azurerm_virtual_network.my_terraform_network.address_space
+    source_address_prefix        = "AzureLoadBalancer"
+    destination_address_prefix   = "VirtualNetwork"
+    resource_group_name          = azurerm_resource_group.rg.name
+    network_security_group_name  = azurerm_network_security_group.my_nsg.name
+}
+
+
 # Create network interface
 resource "azurerm_network_interface" "my_terraform_nic" {
-  count               = 2
+  count               = var.vm_count
   name                = "myNIC-${count.index}"
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
@@ -72,7 +118,7 @@ resource "azurerm_network_interface" "my_terraform_nic" {
 
 # Connect the security group to the network interface
 resource "azurerm_network_interface_security_group_association" "my_security_group_association" {
-  count                     = 2
+  count                     = var.vm_count
   network_interface_id      = azurerm_network_interface.my_terraform_nic[count.index].id
   network_security_group_id = azurerm_network_security_group.my_nsg.id
 }
@@ -123,7 +169,7 @@ resource "azurerm_lb_backend_address_pool" "my_lb_backend_address_pool" {
 
 # Associate the LB with the backend address pool
 resource "azurerm_network_interface_backend_address_pool_association" "my_network_interface_backend_address_pool_association" {
-  count                   = 2
+  count                   = var.vm_count
   network_interface_id    = azurerm_network_interface.my_terraform_nic[count.index].id
   ip_configuration_name   = "internal"
   backend_address_pool_id = azurerm_lb_backend_address_pool.my_lb_backend_address_pool.id
@@ -149,7 +195,7 @@ data "azurerm_image" "vm_ubuntu_1804" {
 
 # Create the virtual machines
 resource "azurerm_linux_virtual_machine" "my_linux_virtual_machine" {
-  count                           = 2
+  count                           = var.vm_count
   name                            = "vm-ubuntu-1804-${count.index}"
   resource_group_name             = data.azurerm_resource_group.rg.name
   location                        = data.azurerm_resource_group.rg.location
@@ -175,7 +221,7 @@ resource "azurerm_linux_virtual_machine" "my_linux_virtual_machine" {
 
 #create a virtual disk for each VM created.
 resource "azurerm_managed_disk" "my_managed_disk" {
-  count                           = 2
+  count                           = var.vm_count
   name                            = "data-disk-${count.index}"
   location                        = data.azurerm_resource_group.rg.location
   resource_group_name             = data.azurerm_resource_group.rg.name
@@ -184,7 +230,7 @@ resource "azurerm_managed_disk" "my_managed_disk" {
   disk_size_gb                    = 1
 }
 resource "azurerm_virtual_machine_data_disk_attachment" "my_virtual_machine_data_disk_attachment" {
-  count              = 2
+  count              = var.vm_count
   managed_disk_id    = azurerm_managed_disk.my_managed_disk.*.id[count.index]
   virtual_machine_id = azurerm_linux_virtual_machine.my_linux_virtual_machine.*.id[count.index]
   lun                = 10 * count.index
