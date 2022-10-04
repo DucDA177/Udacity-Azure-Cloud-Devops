@@ -47,13 +47,16 @@ For this project, you will write a Packer template and a Terraform template to d
 
 2. Packer
 <p style="align:center">
-  <img src="packer/image-ubuntu-1804-packer-result.JPG" width="100%" title="tagging-policy">
+  <img src="packer/image-ubuntu-1804-packer-result.JPG" width="100%" title="image-ubuntu-1804-packer-result">
 </p>
 <p style="align:center">
-  <img src="packer/image-ubuntu-1804.JPG" width="100%" title="tagging-policy">
+  <img src="packer/image-ubuntu-1804.JPG" width="100%" title="image-ubuntu-1804">
 </p>
 
 3. Terraform
 <p style="align:center">
-  <img src="terraform/terraform-output-plan.JPG" width="100%" title="tagging-policy">
+  <img src="terraform/terraform-output-plan.JPG" width="100%" title="terraform-output-plan">
+</p>
+<p style="align:center">
+  <img src="terraform/final-output.JPG" width="100%" title="final-output">
 </p>

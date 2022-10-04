@@ -57,21 +57,23 @@ resource "azurerm_network_security_rule" "DenyAllInbound" {
 
 # Create network interface
 resource "azurerm_network_interface" "my_terraform_nic" {
-  name                = "myNIC"
+  count               = 2
+  name                = "myNIC-${count.index}"
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
 
   ip_configuration {
-    name                          = "my_nic_configuration"
+    primary                       = true
+    name                          = "internal"
     subnet_id                     = azurerm_subnet.my_terraform_subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.my_terraform_public_ip.id
   }
 }
 
 # Connect the security group to the network interface
 resource "azurerm_network_interface_security_group_association" "my_security_group_association" {
-  network_interface_id      = azurerm_network_interface.my_terraform_nic.id
+  count                     = 2
+  network_interface_id      = azurerm_network_interface.my_terraform_nic[count.index].id
   network_security_group_id = azurerm_network_security_group.my_nsg.id
 }
 
@@ -121,7 +123,8 @@ resource "azurerm_lb_backend_address_pool" "my_lb_backend_address_pool" {
 
 # Associate the LB with the backend address pool
 resource "azurerm_network_interface_backend_address_pool_association" "my_network_interface_backend_address_pool_association" {
-  network_interface_id    = azurerm_network_interface.my_terraform_nic.id
+  count                   = 2
+  network_interface_id    = azurerm_network_interface.my_terraform_nic[count.index].id
   ip_configuration_name   = "internal"
   backend_address_pool_id = azurerm_lb_backend_address_pool.my_lb_backend_address_pool.id
 }
@@ -146,8 +149,8 @@ data "azurerm_image" "vm_ubuntu_1804" {
 
 # Create the virtual machines
 resource "azurerm_linux_virtual_machine" "my_linux_virtual_machine" {
-  count                           = 1
-  name                            = "vm_ubuntu_1804"
+  count                           = 2
+  name                            = "vm-ubuntu-1804-${count.index}"
   resource_group_name             = data.azurerm_resource_group.rg.name
   location                        = data.azurerm_resource_group.rg.location
   size                            = "Standard_DS2_v2"
@@ -172,11 +175,18 @@ resource "azurerm_linux_virtual_machine" "my_linux_virtual_machine" {
 
 #create a virtual disk for each VM created.
 resource "azurerm_managed_disk" "my_managed_disk" {
-  count                           = 1
-  name                            = "data-disk"
+  count                           = 2
+  name                            = "data-disk-${count.index}"
   location                        = data.azurerm_resource_group.rg.location
   resource_group_name             = data.azurerm_resource_group.rg.name
   storage_account_type            = "Standard_LRS"
   create_option                   = "Empty"
   disk_size_gb                    = 1
+}
+resource "azurerm_virtual_machine_data_disk_attachment" "my_virtual_machine_data_disk_attachment" {
+  count              = 2
+  managed_disk_id    = azurerm_managed_disk.my_managed_disk.*.id[count.index]
+  virtual_machine_id = azurerm_linux_virtual_machine.my_linux_virtual_machine.*.id[count.index]
+  lun                = 10 * count.index
+  caching            = "ReadWrite"
 }
